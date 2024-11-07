@@ -1,0 +1,88 @@
+// Define Pins
+#define trigPin 11         // Trigger pin for ultrasonic sensor
+#define echoPin 10         // Echo pin for ultrasonic sensor
+#define greenLED 2         // Green LED for safe distance
+#define yellowLED 3        // Yellow LED for caution distance
+#define redLED 4           // Red LED for close distance
+#define potUpper A4        // Potentiometer for adjusting upper threshold
+#define potLower A5        // Potentiometer for adjusting lower threshold
+
+// Base thresholds for reference
+int baseUpperThreshold = 20;   // Base upper threshold
+int baseLowerThreshold = 10;   // Base lower threshold
+int upperThreshold;
+int lowerThreshold;
+
+void setup() {
+  // Initialize LED pins as outputs
+  pinMode(greenLED, OUTPUT);
+  pinMode(yellowLED, OUTPUT);
+  pinMode(redLED, OUTPUT);
+
+  // Initialize ultrasonic sensor pins
+  pinMode(trigPin, OUTPUT);
+  pinMode(echoPin, INPUT);
+
+  // Initialize serial communication for debugging
+  Serial.begin(9600);
+}
+
+long measureDistance() {
+  // Trigger the ultrasonic sensor to send a pulse
+  digitalWrite(trigPin, LOW);
+  delayMicroseconds(2);
+  digitalWrite(trigPin, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(trigPin, LOW);
+
+  // Read the echo pin
+  long duration = pulseIn(echoPin, HIGH);
+  long distance = duration * 0.034 / 2;
+
+  // Debug: Print the raw duration and calculated distance
+  Serial.print("Duration: ");
+  Serial.print(duration);
+  Serial.print(" | Distance: ");
+  Serial.println(distance);
+
+  return distance;
+}
+
+void loop() {
+  // Measure distance using the ultrasonic sensor
+  long distance = measureDistance();
+
+  // Read potentiometer values to adjust thresholds
+  int potUpperValue = analogRead(potUpper);
+  int potLowerValue = analogRead(potLower);
+
+  // Map the potentiometer values to allow wider threshold ranges
+  upperThreshold = constrain(map(potUpperValue, 0, 1023, 20, 400), lowerThreshold + 5, 400);
+  lowerThreshold = constrain(map(potLowerValue, 0, 1023, 1, 100), 1, upperThreshold - 5);
+
+  // Debugging output for distance and thresholds
+  Serial.print("Distance: ");
+  Serial.print(distance);
+  Serial.print(" cm | Upper Threshold: ");
+  Serial.print(upperThreshold);
+  Serial.print(" cm | Lower Threshold: ");
+  Serial.println(lowerThreshold);
+
+  // LED control logic based on distance
+  if (distance > upperThreshold) {
+    digitalWrite(greenLED, HIGH);    // Green LED on (safe distance)
+    digitalWrite(yellowLED, LOW);
+    digitalWrite(redLED, LOW);
+  } else if (distance > lowerThreshold) {
+    digitalWrite(greenLED, LOW);
+    digitalWrite(yellowLED, HIGH);   // Yellow LED on (caution distance)
+    digitalWrite(redLED, LOW);
+  } else {
+    digitalWrite(greenLED, LOW);
+    digitalWrite(yellowLED, LOW);
+    digitalWrite(redLED, HIGH);      // Red LED on (close distance)
+  }
+
+  // Delay to prevent rapid changes and allow for stable readings
+  delay(500);
+}
